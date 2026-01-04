@@ -1,12 +1,17 @@
 {
   "name": "@niicojs/soql",
   "version": "0.1.0",
+  "description": "soql template string helper",
+  "homepage": "https://github.com/niicojs/soql#readme",
+  "bugs": {
+    "url": "https://github.com/niicojs/soql/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niicojs/soql.git"
+  },
   "license": "MIT",
   "author": "niico",
-  "files": [
-    "dist",
-    "src"
-  ],
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -24,6 +29,10 @@
     },
     "./package.json": "./package.json"
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "dev": "tsdx dev",
     "build": "tsdx build",
@@ -35,7 +44,6 @@
     "typecheck": "tsdx typecheck",
     "prepublishOnly": "bun run build"
   },
-  "dependencies": {},
   "devDependencies": {
     "@types/node": "^25.0.3",
     "bunchee": "^6.9.3",
