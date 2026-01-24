@@ -1,17 +1,33 @@
 {
   "name": "@niicojs/soql",
-  "version": "0.1.0",
-  "description": "soql template string helper",
+  "version": "0.2.0",
+  "description": "Safe SOQL template literal tag for Salesforce - prevents SOQL injection with automatic escaping",
+  "keywords": [
+    "apex",
+    "escape",
+    "force.com",
+    "injection",
+    "query-builder",
+    "salesforce",
+    "security",
+    "soql",
+    "sql",
+    "template-literal"
+  ],
   "homepage": "https://github.com/niicojs/soql#readme",
   "bugs": {
     "url": "https://github.com/niicojs/soql/issues"
   },
+  "license": "MIT",
+  "author": "niico",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/niicojs/soql.git"
   },
-  "license": "MIT",
-  "author": "niico",
+  "files": [
+    "dist",
+    "src"
+  ],
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -29,10 +45,6 @@
     },
     "./package.json": "./package.json"
   },
-  "files": [
-    "dist",
-    "src"
-  ],
   "scripts": {
     "dev": "tsdx dev",
     "build": "tsdx build",

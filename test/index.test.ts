@@ -3,12 +3,18 @@ import {
   soql,
   raw,
   like,
+  date,
+  literal,
+  join,
   escapeString,
   escapeLike,
   escapeValue,
   escapeArray,
   formatDate,
   formatDateTime,
+  RAW_SYMBOL,
+  LIKE_SYMBOL,
+  DATE_SYMBOL,
 } from '../src';
 
 describe('escapeString', () => {
@@ -42,6 +48,15 @@ describe('escapeString', () => {
 
   it('handles empty strings', () => {
     expect(escapeString('')).toBe('');
+  });
+
+  it('handles very long strings', () => {
+    const longString = 'a'.repeat(10000);
+    expect(escapeString(longString)).toBe(longString);
+  });
+
+  it('handles unicode characters', () => {
+    expect(escapeString('Caf\u00e9 \u2603 \ud83d\ude00')).toBe('Caf\u00e9 \u2603 \ud83d\ude00');
   });
 });
 
@@ -100,12 +115,20 @@ describe('escapeArray', () => {
     expect(escapeArray(["O'Brien", 'Smith'])).toBe("('O\\'Brien', 'Smith')");
   });
 
-  it('handles empty arrays', () => {
-    expect(escapeArray([])).toBe('(null)');
+  it('throws on empty arrays', () => {
+    expect(() => escapeArray([])).toThrow('Empty arrays are not allowed in SOQL IN clauses');
   });
 
   it('handles mixed types', () => {
     expect(escapeArray(['active', true, 42])).toBe("('active', true, 42)");
+  });
+
+  it('handles large arrays', () => {
+    const largeArray = Array.from({ length: 100 }, (_, i) => `id${i}`);
+    const result = escapeArray(largeArray);
+    expect(result.startsWith('(')).toBe(true);
+    expect(result.endsWith(')')).toBe(true);
+    expect(result.split(', ').length).toBe(100);
   });
 });
 
@@ -143,8 +166,17 @@ describe('escapeValue', () => {
     expect(escapeValue(3.14159)).toBe('3.14159');
   });
 
+  it('handles scientific notation', () => {
+    expect(escapeValue(1e10)).toBe('10000000000');
+    expect(escapeValue(1.5e-5)).toBe('0.000015');
+  });
+
   it('throws on Infinity', () => {
     expect(() => escapeValue(Infinity)).toThrow('Invalid SOQL number value');
+  });
+
+  it('throws on negative Infinity', () => {
+    expect(() => escapeValue(-Infinity)).toThrow('Invalid SOQL number value');
   });
 
   it('throws on NaN', () => {
@@ -171,21 +203,104 @@ describe('escapeValue', () => {
   it('handles like values', () => {
     expect(escapeValue(like('%test%'))).toBe("'\\%test\\%'");
   });
+
+  it('handles date values', () => {
+    const d = new Date('2024-03-15T14:30:45.000Z');
+    expect(escapeValue(date(d))).toBe('2024-03-15');
+  });
 });
 
 describe('raw', () => {
   it('creates a raw value marker', () => {
     const r = raw('Field__c');
-    expect(r.__raw).toBe(true);
+    expect(r[RAW_SYMBOL]).toBe(true);
     expect(r.value).toBe('Field__c');
+  });
+
+  it('rejects plain objects that mimic raw values', () => {
+    const fakeRaw = { value: 'Name' };
+    expect(() => escapeValue(fakeRaw as unknown as string)).toThrow('Unsupported SOQL value type');
   });
 });
 
 describe('like', () => {
   it('creates a like value marker', () => {
     const l = like('%search%');
-    expect(l.__like).toBe(true);
+    expect(l[LIKE_SYMBOL]).toBe(true);
     expect(l.value).toBe('%search%');
+  });
+});
+
+describe('date', () => {
+  it('creates a date value marker', () => {
+    const d = new Date('2024-03-15T14:30:45.000Z');
+    const dateVal = date(d);
+    expect(dateVal[DATE_SYMBOL]).toBe(true);
+    expect(dateVal.value).toBe(d);
+  });
+
+  it('throws on invalid Date', () => {
+    expect(() => date(new Date('invalid'))).toThrow('Invalid Date object');
+  });
+
+  it('formats as date-only in queries', () => {
+    const d = new Date('2024-03-15T14:30:45.000Z');
+    const query = soql`SELECT Id FROM Account WHERE BirthDate = ${date(d)}`;
+    expect(query).toBe('SELECT Id FROM Account WHERE BirthDate = 2024-03-15');
+  });
+});
+
+describe('literal', () => {
+  it('creates a raw value for date literals', () => {
+    const l = literal('TODAY');
+    expect(l[RAW_SYMBOL]).toBe(true);
+    expect(l.value).toBe('TODAY');
+  });
+
+  it('works with LAST_N_DAYS', () => {
+    const l = literal('LAST_N_DAYS:30');
+    expect(l.value).toBe('LAST_N_DAYS:30');
+  });
+
+  it('works in queries', () => {
+    const query = soql`SELECT Id FROM Account WHERE CreatedDate > ${literal('YESTERDAY')}`;
+    expect(query).toBe('SELECT Id FROM Account WHERE CreatedDate > YESTERDAY');
+  });
+
+  it('works with N-based literals', () => {
+    const query = soql`SELECT Id FROM Account WHERE CreatedDate > ${literal('LAST_N_DAYS:7')}`;
+    expect(query).toBe('SELECT Id FROM Account WHERE CreatedDate > LAST_N_DAYS:7');
+  });
+});
+
+describe('join', () => {
+  it('joins raw field names with default separator', () => {
+    const fields = ['Name', 'Email', 'Phone'].map((f) => raw(f));
+    const result = join(fields);
+    expect(escapeValue(result)).toBe('Name, Email, Phone');
+  });
+
+  it('joins with custom separator', () => {
+    const conditions = [raw('IsActive = true'), raw("Type = 'Customer'")];
+    const result = join(conditions, ' AND ');
+    expect(escapeValue(result)).toBe("IsActive = true AND Type = 'Customer'");
+  });
+
+  it('joins mixed values', () => {
+    const values = ['a', 'b', 'c'];
+    const result = join(values, ', ');
+    expect(escapeValue(result)).toBe("'a', 'b', 'c'");
+  });
+
+  it('works in soql template', () => {
+    const fields = ['Id', 'Name', 'Email'].map((f) => raw(f));
+    const query = soql`SELECT ${join(fields)} FROM Contact`;
+    expect(query).toBe('SELECT Id, Name, Email FROM Contact');
+  });
+
+  it('handles empty array', () => {
+    const result = join([]);
+    expect(escapeValue(result)).toBe('');
   });
 });
 
@@ -225,8 +340,8 @@ describe('soql', () => {
   });
 
   it('handles Date values', () => {
-    const date = new Date('2024-03-15T10:30:00.000Z');
-    const query = soql`SELECT Id FROM Account WHERE CreatedDate > ${date}`;
+    const d = new Date('2024-03-15T10:30:00.000Z');
+    const query = soql`SELECT Id FROM Account WHERE CreatedDate > ${d}`;
     expect(query).toBe('SELECT Id FROM Account WHERE CreatedDate > 2024-03-15T10:30:00Z');
   });
 
@@ -260,5 +375,40 @@ describe('soql', () => {
     const malicious = ["a', 'b') OR Id != '"];
     const query = soql`SELECT Id FROM Account WHERE Id IN ${malicious}`;
     expect(query).toBe("SELECT Id FROM Account WHERE Id IN ('a\\', \\'b\\') OR Id != \\'')");
+  });
+
+  it('handles date-only values', () => {
+    const d = new Date('2024-03-15T14:30:45.000Z');
+    const query = soql`SELECT Id FROM Account WHERE BirthDate = ${date(d)}`;
+    expect(query).toBe('SELECT Id FROM Account WHERE BirthDate = 2024-03-15');
+  });
+
+  it('handles date literals', () => {
+    const query = soql`SELECT Id FROM Account WHERE CreatedDate = ${literal('TODAY')}`;
+    expect(query).toBe('SELECT Id FROM Account WHERE CreatedDate = TODAY');
+  });
+
+  it('handles complex queries with join', () => {
+    const fields = ['Id', 'Name', 'Email'].map((f) => raw(f));
+    const name = 'Acme';
+    const query = soql`SELECT ${join(fields)} FROM Contact WHERE Account.Name = ${name}`;
+    expect(query).toBe("SELECT Id, Name, Email FROM Contact WHERE Account.Name = 'Acme'");
+  });
+});
+
+describe('Symbol-based type guards', () => {
+  it('rejects objects with __raw property (old format)', () => {
+    const fakeRaw = { __raw: true, value: 'Name' };
+    expect(() => escapeValue(fakeRaw as unknown as string)).toThrow('Unsupported SOQL value type');
+  });
+
+  it('rejects objects with __like property (old format)', () => {
+    const fakeLike = { __like: true, value: '%test%' };
+    expect(() => escapeValue(fakeLike as unknown as string)).toThrow('Unsupported SOQL value type');
+  });
+
+  it('rejects objects with __date property (old format)', () => {
+    const fakeDate = { __date: true, value: new Date() };
+    expect(() => escapeValue(fakeDate as unknown as string)).toThrow('Unsupported SOQL value type');
   });
 });
