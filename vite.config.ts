@@ -18,4 +18,7 @@ export default defineConfig({
     format: ['esm', 'cjs'],
     outDir: 'dist',
   },
+  check: {
+    fmt: false,
+  },
 });
