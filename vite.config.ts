@@ -10,6 +10,7 @@ export default defineConfig({
     printWidth: 120,
     singleQuote: true,
     sortImports: true,
+    endOfLine: 'crlf',
   },
   pack: {
     entry: ['src/index.ts'],
