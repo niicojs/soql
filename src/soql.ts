@@ -1,5 +1,5 @@
-import type { SoqlValue } from './types';
 import { escapeValue } from './escape';
+import type { SoqlValue } from './types';
 
 /**
  * Tagged template literal for creating safe SOQL queries.

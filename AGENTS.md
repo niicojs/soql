@@ -26,33 +26,33 @@ soql/
 
 ## Build/Lint/Test Commands
 
-**Package Manager**: Bun (use `bun` for all commands)
+**Package Manager**: pnpm (use `pnpm` for package scripts) and Vite+ (use `vp` for tooling)
 
 ```bash
-bun install              # Install dependencies
-bun run build            # Build the package
-bun run typecheck        # Type check
-bun run dev              # Development mode
+vp install              # Install dependencies
+vp run build             # Package the library
+vp check                 # Type check
+vp pack --watch          # Repackage on source changes
 ```
 
 ### Linting & Formatting
 
 ```bash
-bun run lint             # Check for lint errors
-bun run lint --fix       # Auto-fix lint errors
-bun run format           # Format all files
-bun run format:check     # Check formatting without modifying
+vp lint                 # Check for lint errors
+vp lint --fix           # Auto-fix lint errors
+vp fmt                  # Format all files
+vp check                # Check formatting without modifying
 ```
 
 ### Testing
 
 ```bash
-bun run test                     # Run all tests once
-bun run test:watch               # Run tests in watch mode
-bun run test test/index.test.ts  # Run a single test file
-bun run test -t "pattern"        # Run tests matching a pattern
-bun run test --coverage          # Run tests with coverage
-bun run test --update            # Update snapshots
+vp test                     # Run all tests once
+vp test --watch               # Run tests in watch mode
+vp test -- test/index.test.ts  # Run a single test file
+vp test -- -t "pattern"        # Run tests matching a pattern
+vp test -- --coverage          # Run tests with coverage
+vp test -- --update            # Update snapshots
 ```
 
 ## Code Style Guidelines
@@ -69,7 +69,7 @@ This project uses strict TypeScript settings:
 
 ### Formatting
 
-The project uses oxfmt (via tsdx) for formatting. Run `bun run format` to format code.
+The project uses Oxfmt through Vite+. Run `pnpm run format` to format code.
 
 - 2-space indentation
 - Single quotes for strings
@@ -80,7 +80,7 @@ The project uses oxfmt (via tsdx) for formatting. Run `bun run format` to format
 
 ```typescript
 // External dependencies first
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 
 // Internal imports second (use relative paths)
 import { sum } from '../src';
@@ -124,7 +124,7 @@ export const sum = (a: number, b: number): number => {
 Tests use Vitest with globals enabled:
 
 ```typescript
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { functionToTest } from '../src';
 
 describe('functionName', () => {
@@ -159,14 +159,14 @@ CI pipeline runs: lint -> typecheck -> test -> build
 1. Add source code in `src/`
 2. Export from `src/index.ts`
 3. Add tests in `test/`
-4. Run `bun run lint --fix && bun run typecheck && bun run test`
+4. Run `pnpm run lint:fix`, `pnpm run typecheck`, and `pnpm run test`
 
 ### Before Committing
 
 ```bash
-bun run lint --fix
-bun run format
-bun run typecheck
-bun run test
-bun run build
+pnpm run lint:fix
+pnpm run format
+pnpm run typecheck
+pnpm run test
+pnpm run build
 ```

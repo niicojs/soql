@@ -1,5 +1,5 @@
-import type { SoqlValue, RawValue } from './types';
 import { isRawValue, isLikeValue, isDateValue, raw } from './helpers';
+import type { SoqlValue, RawValue } from './types';
 
 /**
  * Escapes a string value for use in SOQL queries.

@@ -3,6 +3,9 @@ node_modules
 .pnp
 .pnp.js
 
+# Package manager lockfiles
+bun.lock
+
 # Build output
 dist
 *.tsbuildinfo
